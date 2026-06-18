@@ -1,0 +1,9 @@
+# Decision Note
+
+I chose a simple orchestrator-first design rather than making the UI call agents directly. The orchestrator parses the prompt once, decides which agents are needed, runs them in dependency order, and records why each one contributed. For the core trip-planning path it runs Destination, then Itinerary, then Budget, because the itinerary needs a destination and the budget needs a concrete plan. This keeps the audit trail easy to inspect and mirrors how I would harden a production agent workflow.
+
+The agents are separate modules with their own rules and outputs. The Destination Agent filters a small curated destination set and refuses options that exceed a hard budget estimate. The Itinerary Agent focuses on realistic sequencing and adds uncertainty notes for live opening hours and travel times. The Budget Agent never silently exceeds a budget; it marks the plan as over-budget and recommends cheaper changes. I used deterministic logic as the source of truth and kept Groq as an optional synthesis layer, so reviewers can run the app without buying or exposing API keys.
+
+Persistence is deliberately lightweight: append-only JSONL audit logs. That is enough for the assignment requirement, easy to review, and avoids spending the time box on database setup. The schema still captures request id, role, parsed constraints, agents, reasons, statuses, and latency, so it can be migrated cleanly to Postgres or Cosmos DB later.
+
+I cut full authentication, live travel APIs, streaming, and polished booking-grade accuracy. Those are useful production additions, but the assignment values orchestration judgement over breadth. I included a reviewer role stub, loading/agent activity state, error handling, metrics, and tests because they show the shape of a production system without burying the core agent workflow.
